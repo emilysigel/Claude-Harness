@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code — Week 2: Configuring Your Tools</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #ffffff;
+    --surface:  #f7f7f7;
+    --surface2: #efefef;
+    --border:   #e0e0e0;
+    --text:     #1a1a1a;
+    --muted:    #555555;
+    --light:    #999999;
+    --orange:   #F47A30;
+    --orange-lt:#FEE9D8;
+    --orange-md:#FBCFAC;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #progress-bar {
+    position: fixed; top: 0; left: 0;
+    height: 3px;
+    background: var(--orange);
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+
+  /* ── Nav ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 28px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .nav-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .nav-series {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--orange);
+    font-weight: 700;
+  }
+
+  .nav-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .nav-dots { display: flex; gap: 7px; align-items: center; }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background .2s, transform .15s;
+  }
+  .dot.active { background: var(--orange); transform: scale(1.3); }
+  .dot:hover  { background: var(--orange-md); }
+
+  .nav-counter { font-size: 12px; color: var(--light); font-variant-numeric: tabular-nums; }
+
+  /* ── Slides ── */
+  #slides { flex: 1; overflow: hidden; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 36px 64px;
+    text-align: center;
+    animation: fadeUp .3s ease;
+  }
+  .slide.active { display: flex; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Type ── */
+  .eyebrow {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--orange);
+    margin-bottom: 8px;
+  }
+
+  .week-chip {
+    display: inline-block;
+    background: var(--orange);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(30px, 5vw, 54px);
+    font-weight: 900;
+    line-height: 1.08;
+    color: var(--text);
+    letter-spacing: -.5px;
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-size: clamp(22px, 3.2vw, 38px);
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -.3px;
+    margin-bottom: 12px;
+  }
+
+  .slide p {
+    font-size: clamp(13.5px, 1.5vw, 17px);
+    line-height: 1.75;
+    color: var(--muted);
+    max-width: 680px;
+  }
+
+  .slide p strong { color: var(--text); }
+
+  .accent { color: var(--orange); }
+
+  .divider {
+    width: 40px; height: 3px;
+    background: var(--orange);
+    border-radius: 2px;
+    margin: 12px auto 16px;
+  }
+
+  code {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    background: var(--orange-lt);
+    color: var(--orange);
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: .88em;
+    font-weight: 700;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    margin: 3px;
+  }
+  .badge-orange { background: var(--orange-lt); color: var(--orange); border: 1px solid var(--orange-md); }
+  .badge-dark   { background: var(--surface);   color: var(--text);   border: 1px solid var(--border); }
+  .badge-green  { background: #e8f5ec; color: #2d8a4e; border: 1px solid #a8d9b8; }
+
+  /* ── Cards ── */
+  .cards {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 18px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px;
+    flex: 1;
+    min-width: 170px;
+    max-width: 230px;
+    text-align: left;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+  }
+  .card:hover { border-color: var(--orange); box-shadow: 0 4px 16px rgba(244,122,48,.1); transform: translateY(-2px); }
+
+  .card-icon { font-size: 24px; margin-bottom: 10px; }
+  .card h4 { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+  .card p  { font-size: 12px; color: var(--muted); line-height: 1.55; }
+  .card .ins-example { font-size: 11px; color: var(--orange); margin-top: 8px; font-style: italic; }
+
+  /* ── Two-col ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    max-width: 800px;
+    width: 100%;
+    margin-top: 16px;
+    text-align: left;
+  }
+
+  .col-block {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .col-block h4 {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    border-bottom: 2px solid var(--orange);
+    padding-bottom: 6px;
+    display: inline-block;
+  }
+
+  .col-block ul {
+    list-style: none;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 2;
+    margin-top: 8px;
+  }
+  .col-block ul li::before { content: "→ "; color: var(--orange); font-weight: 700; }
+
+  /* ── Step list ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 680px;
+    width: 100%;
+    margin-top: 16px;
+    text-align: left;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    transition: border-color .2s;
+  }
+  .step:hover { border-color: var(--orange); }
+
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-body h4 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .step-body p  { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Code block ── */
+  .code-block {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 20px 28px;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 13.5px;
+    color: #e0e0e0;
+    text-align: left;
+    margin-top: 16px;
+    max-width: 540px;
+    width: 100%;
+    line-height: 1.9;
+    white-space: pre;
+  }
+  .code-block .comment { color: #555; }
+  .code-block .cmd { color: var(--orange); font-weight: 700; }
+  .code-block .arg { color: #aaa; }
+
+  /* ── Verb flow ── */
+  .verb-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 20px;
+    max-width: 860px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .verb-step {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 14px;
+    text-align: center;
+    width: 148px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .verb-step:hover { border-color: var(--orange); box-shadow: 0 3px 14px rgba(244,122,48,.12); }
+
+  .verb-arrow {
+    color: var(--border);
+    font-size: 20px;
+    padding: 0 4px;
+    font-weight: 300;
+  }
+
+  .verb-step .v-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--orange-lt);
+    color: var(--orange);
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+  }
+
+  .verb-step .v-cmd {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--orange);
+    margin-bottom: 5px;
+  }
+
+  .verb-step .v-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ── Rule grid ── */
+  .rule-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-top: 14px;
+    max-width: 740px;
+    width: 100%;
+    text-align: left;
+  }
+
+  .rule-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 13px;
+    font-size: 12.5px;
+    color: var(--text);
+  }
+
+  .rule-badge {
+    font-family: monospace;
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    letter-spacing: .5px;
+  }
+  .deny-badge  { background: #fde8e8; color: #cc3333; border: 1px solid #f5b8b8; }
+  .ask-badge   { background: #fff5e0; color: #b37a00; border: 1px solid #fcd97a; }
+  .warn-badge  { background: var(--orange-lt); color: var(--orange); border: 1px solid var(--orange-md); }
+  .auto-badge  { background: #e8f5ec; color: #2d8a4e; border: 1px solid #a8d9b8; }
+
+  /* ── Recap grid ── */
+  .recap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 760px;
+    width: 100%;
+    margin-top: 16px;
+    text-align: left;
+  }
+
+  .recap-card {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+
+  .recap-card h4 {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--orange);
+    margin-bottom: 10px;
+  }
+
+  .recap-card ul {
+    list-style: none;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.95;
+  }
+  .recap-card ul li::before { content: "✓ "; color: var(--orange); font-weight: 700; }
+
+  /* ── Callout box ── */
+  .callout {
+    background: var(--orange-lt);
+    border: 1.5px solid var(--orange-md);
+    border-left: 4px solid var(--orange);
+    border-radius: 10px;
+    padding: 14px 20px;
+    text-align: left;
+    max-width: 680px;
+    width: 100%;
+    margin-top: 16px;
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.65;
+  }
+
+  .callout strong { color: var(--orange); }
+
+  /* ── Table ── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 780px;
+    margin-top: 14px;
+    font-size: 13px;
+    text-align: left;
+  }
+  th {
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    font-weight: 700;
+  }
+  td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tr:nth-child(even) td { background: var(--surface); }
+
+  /* ── Footer ── */
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 10px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .btn {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    padding: 7px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    user-select: none;
+  }
+  .btn:hover { border-color: var(--orange); background: var(--orange-lt); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .btn-primary:hover { background: #d96820; border-color: #d96820; }
+
+  .shortcut-hint { font-size: 11.5px; color: var(--light); }
+
+  kbd {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    font-family: monospace;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav>
+  <div class="nav-left">
+    <span class="nav-series">Claude Code at Your Company · Multi-Week Series</span>
+    <span class="nav-title">Week 2 — Configuring Your Tools</span>
+  </div>
+  <div class="nav-dots" id="nav-dots"></div>
+  <span class="nav-counter" id="nav-counter">1 / 12</span>
+</nav>
+
+<div id="slides">
+
+  <!-- 1 · TITLE -->
+  <div class="slide active" id="slide-1">
+    <div class="week-chip">Week 2 of 6</div>
+    <h1>Configuring<br><span class="accent">Claude Code</span><br>for Your Work</h1>
+    <div class="divider"></div>
+    <p style="margin-bottom:20px;">Last week we got Claude Code running. Today we look at <strong>how to configure it</strong> — adding structure, safety guardrails, and repeatable workflows using a real example: <strong>Claude Harness.</strong></p>
+    <div>
+      <span class="badge badge-orange">Hands-on</span>
+      <span class="badge badge-dark">Insurance Context</span>
+      <span class="badge badge-green">Take This Home</span>
+    </div>
+  </div>
+
+  <!-- 2 · AGENDA -->
+  <div class="slide" id="slide-2">
+    <div class="eyebrow">Today's Session</div>
+    <h2>What We're Covering</h2>
+    <div class="divider"></div>
+    <div class="steps" style="max-width:600px;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Why configuration matters</h4>
+          <p>Out-of-the-box Claude Code is powerful but unstructured. Configuration turns it into a reliable partner.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Claude Harness as a worked example</h4>
+          <p>A plugin that adds a structured workflow, safety guardrails, and a review loop — we'll walk through it live.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>How to apply this to insurance work</h4>
+          <p>Map these patterns to your own projects: policy tools, claims, compliance, reporting.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Try it yourself</h4>
+          <p>You'll leave with a working setup and the steps to replicate it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · WHY CONFIG -->
+  <div class="slide" id="slide-3">
+    <div class="eyebrow">The Problem</div>
+    <h2>Out of the Box vs. Configured</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:6px;">Claude Code without configuration is like a highly capable new hire with no onboarding — talented, but no guardrails, no process, no shared expectations.</p>
+    <div class="two-col">
+      <div class="col-block">
+        <h4>Unconfigured Claude Code</h4>
+        <ul>
+          <li>No shared plan — can drift mid-task</li>
+          <li>Can run destructive commands</li>
+          <li>No structured review built in</li>
+          <li>Behavior varies session to session</li>
+          <li>Hard to enforce team standards</li>
+        </ul>
+      </div>
+      <div class="col-block">
+        <h4>Configured Claude Code</h4>
+        <ul>
+          <li>Shared plan as source of truth</li>
+          <li>Guardrails block risky operations</li>
+          <li>Consistent review process every time</li>
+          <li>Predictable, repeatable workflow</li>
+          <li>Team standards enforced at runtime</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:14px;font-size:13px;">
+      <strong>Insurance context:</strong> When you're touching policy calculations, claims logic, or compliance-sensitive code — you want guardrails, not just good intentions.
+    </div>
+  </div>
+
+  <!-- 4 · WHAT IS HARNESS -->
+  <div class="slide" id="slide-4">
+    <div class="eyebrow">Today's Example</div>
+    <h2>Meet Claude Harness</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:18px;">Claude Harness is a <strong>plugin for Claude Code</strong> that packages up a structured development workflow. Think of it as a pre-built configuration you can install, use as-is, or adapt. We're using it today as a concrete example of what configuration can look like.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h4>It's a plugin</h4>
+        <p>Installed via Claude Code's plugin marketplace. One command to add it to any project.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏗️</div>
+        <h4>It adds structure</h4>
+        <p>Introduces a planning file, a review step, and a release step as named commands.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <h4>It enforces safety</h4>
+        <p>A Go-native engine intercepts tool calls and blocks destructive operations before they run.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <h4>It's a pattern, not a product</h4>
+        <p>You could build similar structure yourself — Harness shows what "configured" looks like.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 · HOW PLUGINS WORK -->
+  <div class="slide" id="slide-5">
+    <div class="eyebrow">Under the Hood</div>
+    <h2>How Claude Code Configuration Works</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:16px;">Claude Code exposes several extension points. Harness uses all of them — understanding them helps you configure Claude Code for <em>your</em> needs.</p>
+    <div class="cards" style="max-width:860px;">
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <h4>Skills (slash commands)</h4>
+        <p>Named commands like <code>/harness-plan</code>. You type them, Claude runs a defined workflow.</p>
+        <p class="ins-example">e.g. /generate-claims-summary</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🪝</div>
+        <h4>Hooks</h4>
+        <p>Shell scripts or binaries that run before/after every tool call. Used for guardrails and logging.</p>
+        <p class="ins-example">e.g. block writes to prod config</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤖</div>
+        <h4>Agents</h4>
+        <p>Sub-agents Claude can spin up to handle specific roles — reviewer, planner, implementer.</p>
+        <p class="ins-example">e.g. a compliance review agent</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <h4>Settings & Permissions</h4>
+        <p>What Claude is allowed to do, which commands auto-approve, and what requires confirmation.</p>
+        <p class="ins-example">e.g. auto-approve read, ask for writes</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 · THE WORKFLOW -->
+  <div class="slide" id="slide-6">
+    <div class="eyebrow">The Harness Workflow</div>
+    <h2>A Structured Loop: 5 Verbs</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:6px;">Harness collapses a complex workflow into five named commands. Each one hands off to the next — and you stay in control at every step.</p>
+    <div class="verb-flow">
+      <div class="verb-step">
+        <div class="v-num">0</div>
+        <div class="v-cmd">/harness-setup</div>
+        <div class="v-desc">Bootstrap project files &amp; config</div>
+      </div>
+      <div class="verb-arrow">›</div>
+      <div class="verb-step">
+        <div class="v-num">1</div>
+        <div class="v-cmd">/harness-plan</div>
+        <div class="v-desc">Idea → Plans.md with acceptance criteria</div>
+      </div>
+      <div class="verb-arrow">›</div>
+      <div class="verb-step">
+        <div class="v-num">2</div>
+        <div class="v-cmd">/harness-work</div>
+        <div class="v-desc">Parallel implementation with self-check</div>
+      </div>
+      <div class="verb-arrow">›</div>
+      <div class="verb-step">
+        <div class="v-num">3</div>
+        <div class="v-cmd">/harness-review</div>
+        <div class="v-desc">4-angle code review (security, perf, quality, a11y)</div>
+      </div>
+      <div class="verb-arrow">›</div>
+      <div class="verb-step">
+        <div class="v-num">4</div>
+        <div class="v-cmd">/harness-release</div>
+        <div class="v-desc">CHANGELOG, tag &amp; handoff</div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:14px;font-size:13px;">
+      <strong>Key insight:</strong> You approve the plan before any code is written. The loop can't start without your sign-off. This is what "human in the loop" looks like in practice.
+    </div>
+  </div>
+
+  <!-- 7 · INSTALL DEMO -->
+  <div class="slide" id="slide-7">
+    <div class="eyebrow">Live Demo Setup</div>
+    <h2>Installing Harness — 3 Commands</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:4px;">Start Claude Code inside your project folder, then run these three commands. That's the entire setup.</p>
+    <div class="code-block"><span class="comment"># Step 1 — add the plugin source</span>
+<span class="cmd">/plugin marketplace add</span> <span class="arg">Chachamaru127/claude-code-harness</span>
+
+<span class="comment"># Step 2 — install it</span>
+<span class="cmd">/plugin install</span> <span class="arg">claude-code-harness@claude-code-harness-marketplace</span>
+
+<span class="comment"># Step 3 — initialize this project</span>
+<span class="cmd">/harness-setup</span>
+</div>
+    <p style="margin-top:14px;font-size:12.5px;"><strong>What setup does:</strong> Creates a <code>Plans.md</code> file, wires up the hooks, and registers the 5 verb commands for this project. No Node.js needed — runs on a single Go binary.</p>
+  </div>
+
+  <!-- 8 · GUARDRAILS -->
+  <div class="slide" id="slide-8">
+    <div class="eyebrow">Safety Configuration</div>
+    <h2>Guardrails: What Gets Blocked</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:8px;">Harness installs a hook engine that <strong>intercepts every tool call</strong> before Claude acts. These run in under 10ms — invisible to you, always on.</p>
+    <div class="rule-grid">
+      <div class="rule-row"><span class="rule-badge deny-badge">DENY</span> sudo commands</div>
+      <div class="rule-row"><span class="rule-badge deny-badge">DENY</span> Writes to .git, .env, secret files</div>
+      <div class="rule-row"><span class="rule-badge deny-badge">DENY</span> git push --force</div>
+      <div class="rule-row"><span class="rule-badge deny-badge">DENY</span> git reset --hard main/master</div>
+      <div class="rule-row"><span class="rule-badge deny-badge">DENY</span> --no-verify / skip hooks</div>
+      <div class="rule-row"><span class="rule-badge ask-badge">ASK</span> Writes outside the project folder</div>
+      <div class="rule-row"><span class="rule-badge ask-badge">ASK</span> rm -rf</div>
+      <div class="rule-row"><span class="rule-badge ask-badge">ASK</span> Direct push to main / master</div>
+      <div class="rule-row"><span class="rule-badge warn-badge">WARN</span> Edits to protected files</div>
+      <div class="rule-row"><span class="rule-badge warn-badge">WARN</span> Skipped tests / assertion tampering</div>
+      <div class="rule-row"><span class="rule-badge auto-badge">AUTO ✓</span> Read-only ops (git status, tests)</div>
+      <div class="rule-row"><span class="rule-badge auto-badge">AUTO ✓</span> Standard build commands</div>
+    </div>
+  </div>
+
+  <!-- 9 · REVIEW STEP -->
+  <div class="slide" id="slide-9">
+    <div class="eyebrow">Built-in Quality Gate</div>
+    <h2>/harness-review — Before You Ship</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:16px;">Every review runs four independent perspectives. This is a <strong>sub-agent</strong> doing the review — not Claude second-guessing itself, but a separate analysis pass.</p>
+    <div class="cards" style="max-width:760px;">
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h4>Security</h4>
+        <p>Injection vulnerabilities, auth issues, secret exposure.</p>
+        <p class="ins-example">Critical for policy & PII handling</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <h4>Performance</h4>
+        <p>Bottlenecks, memory usage, scaling risks.</p>
+        <p class="ins-example">Matters for batch claims processing</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <h4>Quality</h4>
+        <p>Maintainability, naming, test coverage signals.</p>
+        <p class="ins-example">Auditors read this code too</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">♿</div>
+        <h4>Accessibility</h4>
+        <p>WCAG compliance, screen reader support.</p>
+        <p class="ins-example">Required for customer-facing portals</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 · INSURANCE PATTERNS -->
+  <div class="slide" id="slide-10">
+    <div class="eyebrow">Applying This to Your Work</div>
+    <h2>Insurance Use Cases</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:14px;">The same patterns — <strong>plan → implement → review → release</strong> — map directly to the kinds of work your teams do.</p>
+    <table>
+      <thead>
+        <tr><th>Your Work</th><th>How Configuration Helps</th><th>Guardrail Example</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Policy calculation logic</strong></td>
+          <td>Plan step forces acceptance criteria before any code runs</td>
+          <td>Block writes to rate tables without ASK prompt</td>
+        </tr>
+        <tr>
+          <td><strong>Claims processing tools</strong></td>
+          <td>Review step checks security &amp; data handling every time</td>
+          <td>Deny direct DB writes outside approved paths</td>
+        </tr>
+        <tr>
+          <td><strong>Compliance reporting</strong></td>
+          <td>Audit trail via CHANGELOG + evidence pack</td>
+          <td>Warn on edits to regulated output files</td>
+        </tr>
+        <tr>
+          <td><strong>Internal dashboards</strong></td>
+          <td>Accessibility review catches issues before launch</td>
+          <td>Auto-allow read-only data fetches</td>
+        </tr>
+        <tr>
+          <td><strong>API integrations</strong></td>
+          <td>Parallel workers implement, reviewer catches edge cases</td>
+          <td>Ask before any push to shared environments</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 11 · HOW TO CUSTOMIZE -->
+  <div class="slide" id="slide-11">
+    <div class="eyebrow">Take This Home</div>
+    <h2>Adapting This to Your Projects</h2>
+    <div class="divider"></div>
+    <p style="margin-bottom:14px;">Harness is an example — not a requirement. Here's how to think about building your own configuration.</p>
+    <div class="two-col" style="max-width:780px;">
+      <div class="col-block">
+        <h4>Start with Harness as-is</h4>
+        <ul>
+          <li>Install it, run /harness-setup</li>
+          <li>Try /harness-plan on a real task</li>
+          <li>See what the review step catches</li>
+          <li>Use it for 1 sprint, note what helps</li>
+        </ul>
+      </div>
+      <div class="col-block">
+        <h4>Then customize</h4>
+        <ul>
+          <li>Add your own slash commands (skills)</li>
+          <li>Write hooks for your protected files</li>
+          <li>Create an insurance-specific review agent</li>
+          <li>Add auto-allow rules for your safe ops</li>
+        </ul>
+      </div>
+      <div class="col-block">
+        <h4>Team adoption</h4>
+        <ul>
+          <li>Check config into the repo — it travels with code</li>
+          <li>Share your Plans.md template</li>
+          <li>Document your guardrail decisions</li>
+          <li>Review sessions become team knowledge</li>
+        </ul>
+      </div>
+      <div class="col-block">
+        <h4>Update when needed</h4>
+        <ul>
+          <li>/plugin update claude-code-harness</li>
+          <li>Or fork and maintain your own version</li>
+          <li>Config is code — PR it like anything else</li>
+          <li>Claude Code v2.1+ for all features</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 · WRAP UP -->
+  <div class="slide" id="slide-12">
+    <div class="eyebrow">Week 2 Takeaways</div>
+    <h2>What to Remember</h2>
+    <div class="divider"></div>
+    <div class="recap-grid">
+      <div class="recap-card">
+        <h4>Configuration = control</h4>
+        <ul>
+          <li>Plugins, hooks, skills, settings are the levers</li>
+          <li>You decide what Claude can and can't do</li>
+          <li>Start simple, add guardrails as you learn</li>
+        </ul>
+      </div>
+      <div class="recap-card">
+        <h4>Harness is the example</h4>
+        <ul>
+          <li>plan → work → review → release</li>
+          <li>Human approves the plan first, always</li>
+          <li>Hooks enforce safety on every tool call</li>
+        </ul>
+      </div>
+      <div class="recap-card">
+        <h4>Apply it to insurance work</h4>
+        <ul>
+          <li>Map your protected files to guardrail rules</li>
+          <li>Use review step for compliance-sensitive code</li>
+          <li>Evidence pack = audit trail for free</li>
+        </ul>
+      </div>
+      <div class="recap-card">
+        <h4>Next: Week 3</h4>
+        <ul>
+          <li>Building your first custom skill</li>
+          <li>Writing hooks for your team's rules</li>
+          <li>Sharing config across a team</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:18px;">
+      <span class="badge badge-orange">Install: /plugin marketplace add Chachamaru127/claude-code-harness</span>
+    </div>
+  </div>
+
+</div><!-- #slides -->
+
+<footer>
+  <button class="btn" id="btn-prev" onclick="changeSlide(-1)">← Prev</button>
+  <span class="shortcut-hint"><kbd>←</kbd> <kbd>→</kbd> to navigate &nbsp;·&nbsp; <kbd>F</kbd> fullscreen</span>
+  <button class="btn btn-primary" id="btn-next" onclick="changeSlide(1)">Next →</button>
+</footer>
+
+<script>
+  const TOTAL = 12;
+  let current = 1;
+
+  const progressBar = document.getElementById('progress-bar');
+  const counter     = document.getElementById('nav-counter');
+  const dotsEl      = document.getElementById('nav-dots');
+  const btnPrev     = document.getElementById('btn-prev');
+  const btnNext     = document.getElementById('btn-next');
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 1 ? ' active' : '');
+    d.title = `Slide ${i}`;
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+
+  function goTo(n) {
+    document.getElementById('slide-' + current).classList.remove('active');
+    dotsEl.children[current - 1].classList.remove('active');
+    current = Math.max(1, Math.min(TOTAL, n));
+    document.getElementById('slide-' + current).classList.add('active');
+    dotsEl.children[current - 1].classList.add('active');
+    counter.textContent = `${current} / ${TOTAL}`;
+    progressBar.style.width = ((current / TOTAL) * 100) + '%';
+    btnPrev.disabled = current === 1;
+    btnNext.textContent = current === TOTAL ? 'Restart' : 'Next →';
+  }
+
+  function changeSlide(dir) {
+    if (dir === 1 && current === TOTAL) { goTo(1); return; }
+    goTo(current + dir);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); changeSlide(-1); }
+    if (e.key === 'f' || e.key === 'F') { document.documentElement.requestFullscreen?.(); }
+    if (e.key === 'Home') goTo(1);
+    if (e.key === 'End')  goTo(TOTAL);
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX, { passive: true });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) changeSlide(dx < 0 ? 1 : -1);
+  });
+
+  goTo(1);
+</script>
+</body>
+</html>
